@@ -2,7 +2,7 @@
 (* Analyseur lexical pour Mini C *)
 
 {
-  exception Error
+  exception Error of string
 }
 
 let letter = ['a'-'z' 'A'-'Z' '_']
