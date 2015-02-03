@@ -1,21 +1,24 @@
 
 (* Arbre de syntaxe abstraite de Mini C *)
 
+
+exception SyntaxError of string
+
 type ident = string
 
 type binop =
   | Bplus | Bminus | Btimes | Bdiv | Bmod
-  | Band | Bor | Bband | Bbor | Bbxor | Bshiftl | Bshiftr
+  | Band | Bor | Bband | Bbor | Bbxor | BshiftL | BshiftR
   | Beq | Bneq | Bleq | Blt | Bgeq | Bgt
 
 type unop = 
-  | Unot | Ubnot
+  | Uneg | Unot | Ubnot
 
 type typ =
-  | Tarray of int * typ
+  | Tarray of expr * typ
   | Tint
 
-type constant =
+and constant =
   | Carray of int * expr array
   | Cint of int
 
@@ -41,7 +44,7 @@ type stat =
   | Sdecl of ident * typ
 
 type declaration =
-  | Dident of ident * typ
+  | Dident of ident list * typ
   | Dfun of ident * typ * (ident * typ) list * stat
 
 type file = declaration list

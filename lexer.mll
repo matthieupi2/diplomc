@@ -6,8 +6,6 @@
   open Parser
   open Lexing
 
-  exception Error of string
-
   (* Définition des mots-clefs *)
   let kwd = Hashtbl.create 17
   let () = List.iter (fun (k,t) -> Hashtbl.add kwd k t)
@@ -28,7 +26,7 @@
     | "\\t" -> 9
     | s -> int_of_char s.[0]
 
-  let carray_of_list l =
+  let carray_of_list l = 
     let arr = Array.of_list l in
     Carray (Array.length arr, arr)
 }
@@ -51,7 +49,7 @@ rule next_token = parse
   | integer as s              { try
       CST (Cint (int_of_string s))
     with _ ->
-      raise (Error ("constant too large")) }
+      raise (SyntaxError ("constant too large")) }
   | '\''(character as s)'\''  { CST (Cint (int_of_character s)) }
   | '"'                       { CST (carray_of_list (lstring lexbuf)) }
 
@@ -91,28 +89,28 @@ rule next_token = parse
 
   | eof { EOF }
 
-  | '\''character { raise (Error "missing \'") }
+  | '\''character { raise (SyntaxError "missing \'") }
   | '\''('\\'_ as s) 
-    { raise (Error ("illegal escape sequence " ^ s)) }
+    { raise (SyntaxError ("illegal escape sequence " ^ s)) }
   | '\''(_ as c)
-    { raise (Error ("illegal character between \': " ^ Char.escaped c)) }
-  | _ as c  { raise (Error ("illegal character: " ^ Char.escaped c)) }
+    { raise (SyntaxError ("illegal character between \': " ^ Char.escaped c)) }
+  | _ as c  { raise (SyntaxError ("illegal character: " ^ Char.escaped c)) }
 
 and comment = parse
   | '\n'  { new_line lexbuf ; next_token lexbuf }
-  | eof   { raise (Error "unterminated comment") }
+  | eof   { raise (SyntaxError "unterminated comment") }
   | _     { comment lexbuf }
 
 and multicomment = parse
   | "*/"  { next_token lexbuf }
   | '\n'  { new_line lexbuf ; multicomment lexbuf }
-  | eof   { raise (Error "unterminated comment") }
+  | eof   { raise (SyntaxError "unterminated comment") }
   | _     { multicomment lexbuf }
 
 and lstring = parse
   | '"'             { [] }
   | character as s  { Econst (Cint (int_of_character s))::lstring lexbuf }
-  | eof             { raise (Error "unterminated string") }
-  | '\\'_ as s       { raise (Error ("illegal escape sequence " ^ s)) }
+  | eof             { raise (SyntaxError "unterminated string") }
+  | '\\'_ as s       { raise (SyntaxError ("illegal escape sequence " ^ s)) }
   | _ as c
-    { raise (Error ("illegal character in a string: " ^ Char.escaped c)) }
+    { raise (SyntaxError ("illegal character in a string: " ^ Char.escaped c)) }

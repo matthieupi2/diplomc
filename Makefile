@@ -1,4 +1,4 @@
-CMO = parser.cmo lexer.cmo main.cmo
+CMO = ast.cmo parser.cmo lexer.cmo main.cmo
 GENERATED = lexer.ml parser.ml parser.mli
 
 all: jeu
@@ -17,9 +17,9 @@ jeu: $(CMO)
 lexer.ml: lexer.mll
 	ocamllex lexer.mll
 
-parser.ml: parser.mly ast.cmi
+parser.ml: parser.mly ast.cmo
 	menhir --infer parser.mly
-parser.mli: parser.mly ast.cmi
+parser.mli: parser.mly ast.cmo
 	menhir --infer parser.mly
 
 clean:
