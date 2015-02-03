@@ -11,7 +11,7 @@
   (* Définition des mots-clefs *)
   let kwd = Hashtbl.create 17
   let () = List.iter (fun (k,t) -> Hashtbl.add kwd k t)
-    ["if", IF ;  "else", ELSE ; "return", RETURN ; "int", INT ; "while", WHILE]
+    ["if", IF ;  "else", ELSE ; "return", RETURN ; "while", WHILE ; "int", INT]
 
   (* Différencie les identifiants des mots-clefs *)
   let id s =
@@ -54,6 +54,42 @@ rule next_token = parse
       raise (Error ("constant too large")) }
   | '\''(character as s)'\''  { CST (Cint (int_of_character s)) }
   | '"'                       { CST (carray_of_list (lstring lexbuf)) }
+
+  | '(' { LB }
+  | ')' { RB }
+  | '[' { LSB }
+  | ']' { RSB }
+  | '{' { LCB }
+  | '}' { RCB }
+
+  | ';' { SEMICOLON }
+  | ',' { COMMA }
+  | '=' { ASSIGN }
+  
+  | "=="  { EQ }
+  | "!="  { NEQ }
+  | "<="  { LEQ }
+  | '<'   { LT }
+  | ">="  { GEQ }
+  | '>'   { GT }
+
+  | '+'   { PLUS }
+  | '-'   { MINUS }
+  | '*'   { TIMES }
+  | '/'   { DIV }
+  | '%'   { MOD }
+  | "&&"  { AND }
+  | "||"  { OR }
+  | '&'   { BAND }
+  | '|'   { BOR }
+  | '^'   { BXOR }
+  | "<<"  { SHIFTL }
+  | ">>"  { SHIFTR }
+
+  | '!' { NOT }
+  | '~' { BNOT }
+
+  | eof { EOF }
 
   | '\''character { raise (Error "missing \'") }
   | '\''('\\'_ as s) 
