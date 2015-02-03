@@ -16,7 +16,7 @@ type typ =
   | Tint
 
 type constant =
-  | Carray of expr array
+  | Carray of int * expr array
   | Cint of int
 
 and left =

@@ -19,16 +19,25 @@
       Hashtbl.find kwd s
     with Not_found ->
       IDENT s
+
+  let int_of_character = function
+    | "\\0" -> 0
+    | "\\\\" -> 92
+    | "\\n" -> 10
+    | "\\'" -> 39
+    | "\\t" -> 9
+    | s -> int_of_char s.[0]
+
+  let carray_of_list l =
+    let arr = Array.of_list l in
+    Carray (Array.length arr, arr)
 }
 
 let letter = ['a'-'z' 'A'-'Z' '_']
 let digit = ['0'-'9']
-let bdigit = ['0'-'1']
-let hdigit = ['0'-'9' 'a'-'f' 'A'-'F']
-let integer = digit+
+let integer = digit+ | '0' ( ('b'|'B')['0'-'1']+ | ('o'|'O')['0'-'7']+ |
+  ('x'|'X')['0'-'9' 'a'-'f' 'A'-'F']+)
 let character = ['\032'-'\126']#['\\' '"'] | '\\'['0' '\\' 'n' '\'' '"' 't']
-let binteger = "0b" bdigit+
-let hinteger = "0x" hdigit+
 let ident = letter(letter|digit)*
 
 rule next_token = parse
@@ -39,6 +48,18 @@ rule next_token = parse
 
   | ident as s  { id s }
 
+  | integer as s              { try
+      CST (Cint (int_of_string s))
+    with _ ->
+      raise (Error ("constant too large")) }
+  | '\''(character as s)'\''  { CST (Cint (int_of_character s)) }
+  | '"'                       { CST (carray_of_list (lstring lexbuf)) }
+
+  | '\''character { raise (Error "missing \'") }
+  | '\''('\\'_ as s) 
+    { raise (Error ("illegal escape sequence " ^ s)) }
+  | '\''(_ as c)
+    { raise (Error ("illegal character between \': " ^ Char.escaped c)) }
   | _ as c  { raise (Error ("illegal character: " ^ Char.escaped c)) }
 
 and comment = parse
@@ -51,3 +72,11 @@ and multicomment = parse
   | '\n'  { new_line lexbuf ; multicomment lexbuf }
   | eof   { raise (Error "unterminated comment") }
   | _     { multicomment lexbuf }
+
+and lstring = parse
+  | '"'             { [] }
+  | character as s  { Econst (Cint (int_of_character s))::lstring lexbuf }
+  | eof             { raise (Error "unterminated string") }
+  | '\\'_ as s       { raise (Error ("illegal escape sequence " ^ s)) }
+  | _ as c
+    { raise (Error ("illegal character in a string: " ^ Char.escaped c)) }
