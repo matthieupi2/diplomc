@@ -16,4 +16,20 @@ let hinteger = "0x" hdigit+
 let ident = letter(letter|digit)*
 
 rule next_tokens = parse
-  | _ as c { raise (Error ("illegal character: " ^ Char.escaped c)) }
+  | '\n'        { new_line lexbuf ; next_token lexbuf }
+  | '\t' | ' '  { next_token lexbuf }
+  | "//"        { comment lexbuf }
+  | "/*"        { multicomment lexbuf }
+
+  | _ as c  { raise (Error ("illegal character: " ^ Char.escaped c)) }
+
+and comment = parse
+  | '\n'  { new_line lexbuf : next_token lexbuf}
+  | eof   { raise (Error "unterminated comment") }
+  | _     { comment lexbuf }
+
+and multicomment = parse
+  | "*/"  { next_token lexbuf }
+  | '\n'  { new_line lexbuf ; multicomment lexbuf }
+  | eof   { raise (Error "unterminated comment") }
+  | _     { multicomment lexbuf }
