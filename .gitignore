@@ -8,7 +8,7 @@ parser.ml
 parser.mli
 parser.output
 parser.automaton
-*.hs
+*.mc
 *.native
 _build
 .depend

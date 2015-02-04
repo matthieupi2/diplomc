@@ -4,9 +4,6 @@
 %{
   open Ast
 
-  let syntax_error s =
-    raise (SyntaxError s)
-
   let carray_of_list l = 
     let arr = Array.of_list l in
     Carray (Array.length arr, arr)
@@ -67,16 +64,12 @@ typ2:
 
 stat:
   | e=loc_expr SEMICOLON                      { Sexpr e }
-  | LCB ls=lstat RCB                          { Sdo ls }
-  | RETURN e=loc_expr                         { Sreturn e }
+  | LCB ls=stat* RCB                          { Sdo ls }
+  | RETURN e=loc_expr SEMICOLON               { Sreturn e }
   | IF LB e=loc_expr RB s=stat                { Sif (e, s) }
   | IF LB e=loc_expr RB s1=stat ELSE s2=stat  { Sifelse (e, s1, s2) }
   | WHILE LB e=loc_expr RB s=stat             { Swhile (e, s) }
-  | t=typ ident=loc_ident                     { Sdecl (ident, t) } ;
-
-lstat:
-  | s=stat SEMICOLON ls=lstat { s::ls }
-  |                           { [] } ;
+  | t=typ ident=loc_ident SEMICOLON           { Sdecl (ident, t) } ;
 
 loc_expr:
   | e=expr  { {expr = e; loc = ($startpos, $endpos)} }

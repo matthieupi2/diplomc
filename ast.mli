@@ -3,8 +3,6 @@
 
 open Lexing
 
-exception SyntaxError of string
-
 type ident = string
 
 type loc_ident = { ident : ident; loc : position * position }
