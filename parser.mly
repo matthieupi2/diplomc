@@ -22,6 +22,21 @@
 %token NOT BNOT
 %token EOF
 
+%left     ASSIGN
+%left     OR
+%left     AND
+%left     BOR
+%left     BXOR
+%left     BAND
+%left     EQ NEQ
+%left     LEQ LT GEQ GT
+%left     SHIFTL SHIFTR
+%left     PLUS MINUS
+%left     TIMES DIV MOD
+%right    NOT BNOT neg
+%nonassoc RB    (* IF *)
+%nonassoc ELSE
+
 %start file
 
 %type <Ast.file> file
@@ -49,26 +64,31 @@ typ2:
 
 stat:
   | e=expr SEMICOLON                      { Sexpr e }
-  | LCB ls=separated_nonempty_list(SEMICOLON, stat) SEMICOLON RCB { Sdo ls }
+  | LCB ls=lstat RCB                      { Sdo ls }
   | RETURN e=expr                         { Sreturn e }
   | IF LB e=expr RB s=stat                { Sif (e, s) }
   | IF LB e=expr RB s1=stat ELSE s2=stat  { Sifelse (e, s1, s2) }
   | WHILE LB e=expr RB s=stat             { Swhile (e, s) }
   | t=typ ident=IDENT                     { Sdecl (ident, t) } ;
 
+lstat:
+  | s=stat SEMICOLON ls=lstat { s::ls }
+  |                           { [] } ;
+
 expr:
-  | l=left  { Eleft l }
-  | l=left ASSIGN e=expr  { Eassign (l, e) }
+  | l=left                                          { Eleft l }
+  | l=left ASSIGN e=expr                            { Eassign (l, e) }
   | f=IDENT LB args=separated_list(COMMA, expr) RB  { Ecall (f, args) }
-  | e1=expr op=binop e2=expr  { Ebinop (op, e1, e2) }
-  | op=unop e=expr  { Eunop (op, e) }
-  | LCB arr=separated_nonempty_list(COMMA, expr)
-    { Econst (carray_of_list arr) } ;
-  | c=CST { Econst c } ;
+  | e1=expr op=binop e2=expr                        { Ebinop (op, e1, e2) }
+  | op=unop e=expr                                  { Eunop (op, e) }
+  | MINUS e=expr %prec neg                          { Eunop (Uneg, e) }
+  | LCB arr=separated_nonempty_list(COMMA, expr) RCB
+    { Econst (carray_of_list arr) }
+  | c=CST                                           { Econst c } ;
 
 left:
   | ident=IDENT LSB e=expr RSB  { Lterm (ident, e) }
-  | ident=IDENT                 { Lident ident }
+  | ident=IDENT                 { Lident ident } ;
 
 %inline binop:
   | PLUS    { Bplus }
@@ -81,16 +101,15 @@ left:
   | BAND    { Bband }
   | BOR     { Bbor }
   | BXOR    { Bbxor }
-  | SHIFTL { BshiftL }
-  | SHIFTR { BshiftR }
-  | EQ     { Beq }
-  | NEQ    { Bneq }
-  | LEQ    { Bleq }
-  | LT     { Blt }
-  | GEQ    { Bgeq }
-  | GT     { Bgt } ;
+  | SHIFTL  { BshiftL }
+  | SHIFTR  { BshiftR }
+  | EQ      { Beq }
+  | NEQ     { Bneq }
+  | LEQ     { Bleq }
+  | LT      { Blt }
+  | GEQ     { Bgeq }
+  | GT      { Bgt } ;
 
 %inline unop:
-  | MINUS { Uneg }
-  | NOT   { Unot }
-  | BNOT  { Ubnot } ;
+  | NOT             { Unot }
+  | BNOT            { Ubnot } ;
