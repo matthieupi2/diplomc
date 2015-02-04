@@ -46,49 +46,55 @@
 file:
   | ldecl=decl* EOF { ldecl } ;
 
+loc_ident:
+  | id=IDENT  { {ident = id; loc = ($startpos, $endpos)} }
+
 decl:
-  | t=typ lident=separated_nonempty_list(COMMA, IDENT) SEMICOLON
+  | t=typ lident=separated_nonempty_list(COMMA, loc_ident) SEMICOLON
     { Dident (lident, t) }
-  | t=typ f=IDENT LB args=separated_list(COMMA, decl_ident) RB s=stat
+  | t=typ f=loc_ident LB args=separated_list(COMMA, decl_ident) RB s=stat
     { Dfun (f, t, args, s) } ;
 
 decl_ident:
-  | t=typ ident=IDENT { (ident, t) } ;
+  | t=typ ident=loc_ident { (ident, t) } ;
 
 typ:
   | INT t=typ2 { t } ;
 
 typ2:
-  | LSB e=expr RSB t=typ2 { Tarray (e, t) }
-  |                       { Tint } ;
+  | LSB e=loc_expr RSB t=typ2 { Tarray (e, t) }
+  |                           { Tint } ;
 
 stat:
-  | e=expr SEMICOLON                      { Sexpr e }
-  | LCB ls=lstat RCB                      { Sdo ls }
-  | RETURN e=expr                         { Sreturn e }
-  | IF LB e=expr RB s=stat                { Sif (e, s) }
-  | IF LB e=expr RB s1=stat ELSE s2=stat  { Sifelse (e, s1, s2) }
-  | WHILE LB e=expr RB s=stat             { Swhile (e, s) }
-  | t=typ ident=IDENT                     { Sdecl (ident, t) } ;
+  | e=loc_expr SEMICOLON                      { Sexpr e }
+  | LCB ls=lstat RCB                          { Sdo ls }
+  | RETURN e=loc_expr                         { Sreturn e }
+  | IF LB e=loc_expr RB s=stat                { Sif (e, s) }
+  | IF LB e=loc_expr RB s1=stat ELSE s2=stat  { Sifelse (e, s1, s2) }
+  | WHILE LB e=loc_expr RB s=stat             { Swhile (e, s) }
+  | t=typ ident=loc_ident                     { Sdecl (ident, t) } ;
 
 lstat:
   | s=stat SEMICOLON ls=lstat { s::ls }
   |                           { [] } ;
 
+loc_expr:
+  | e=expr  { {expr = e; loc = ($startpos, $endpos)} }
+
 expr:
-  | l=left                                          { Eleft l }
-  | l=left ASSIGN e=expr                            { Eassign (l, e) }
-  | f=IDENT LB args=separated_list(COMMA, expr) RB  { Ecall (f, args) }
-  | e1=expr op=binop e2=expr                        { Ebinop (op, e1, e2) }
-  | op=unop e=expr                                  { Eunop (op, e) }
-  | MINUS e=expr %prec neg                          { Eunop (Uneg, e) }
-  | LCB arr=separated_nonempty_list(COMMA, expr) RCB
+  | l=left                              { Eleft l }
+  | l=left ASSIGN e=loc_expr            { Eassign (l, e) }
+  | f=loc_ident LB args=separated_list(COMMA, loc_expr) RB { Ecall (f, args) }
+  | e1=loc_expr op=binop e2=loc_expr    { Ebinop (op, e1, e2) }
+  | op=unop e=loc_expr                  { Eunop (op, e) }
+  | MINUS e=loc_expr %prec neg          { Eunop (Uneg, e) }
+  | LCB arr=separated_nonempty_list(COMMA, loc_expr) RCB
     { Econst (carray_of_list arr) }
-  | c=CST                                           { Econst c } ;
+  | c=CST                               { Econst c } ;
 
 left:
-  | ident=IDENT LSB e=expr RSB  { Lterm (ident, e) }
-  | ident=IDENT                 { Lident ident } ;
+  | ident=loc_ident LSB e=loc_expr RSB  { Lterm (ident, e) }
+  | ident=loc_ident                     { Lident ident } ;
 
 %inline binop:
   | PLUS    { Bplus }

@@ -109,7 +109,8 @@ and multicomment = parse
 
 and lstring = parse
   | '"'             { [] }
-  | character as s  { Econst (Cint (int_of_character s))::lstring lexbuf }
+  | character as s  { { expr = Econst (Cint (int_of_character s));
+    loc = (dummy_pos, dummy_pos) }::lstring lexbuf }
   | eof             { raise (SyntaxError "unterminated string") }
   | '\\'_ as s       { raise (SyntaxError ("illegal escape sequence " ^ s)) }
   | _ as c

@@ -1,10 +1,13 @@
 
 (* Arbre de syntaxe abstraite de Mini C *)
 
+open Lexing
 
 exception SyntaxError of string
 
 type ident = string
+
+type loc_ident = { ident : ident; loc : position * position }
 
 type binop =
   | Bplus | Bminus | Btimes | Bdiv | Bmod
@@ -15,36 +18,38 @@ type unop =
   | Uneg | Unot | Ubnot
 
 type typ =
-  | Tarray of expr * typ
+  | Tarray of loc_expr * typ
   | Tint
 
 and constant =
-  | Carray of int * expr array
+  | Carray of int * loc_expr array
   | Cint of int
 
 and left =
-  | Lterm of ident * expr
-  | Lident of ident
+  | Lterm of loc_ident * loc_expr
+  | Lident of loc_ident
+
+and loc_expr = { expr : expr; loc : position * position }
 
 and expr =
   | Eleft of left
-  | Eassign of left * expr
-  | Ecall of ident * expr list
-  | Ebinop of binop * expr * expr
-  | Eunop of unop * expr
+  | Eassign of left * loc_expr
+  | Ecall of loc_ident * loc_expr list
+  | Ebinop of binop * loc_expr * loc_expr
+  | Eunop of unop * loc_expr
   | Econst of constant
 
 type stat =
-  | Sexpr of expr
+  | Sexpr of loc_expr
   | Sdo of stat list
-  | Sreturn of expr
-  | Sif of expr * stat
-  | Sifelse of expr * stat * stat
-  | Swhile of expr * stat
-  | Sdecl of ident * typ
+  | Sreturn of loc_expr
+  | Sif of loc_expr * stat
+  | Sifelse of loc_expr * stat * stat
+  | Swhile of loc_expr * stat
+  | Sdecl of loc_ident * typ
 
 type declaration =
-  | Dident of ident list * typ
-  | Dfun of ident * typ * (ident * typ) list * stat
+  | Dident of loc_ident list * typ
+  | Dfun of loc_ident * typ * (loc_ident * typ) list * stat
 
 type file = declaration list
