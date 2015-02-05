@@ -23,11 +23,11 @@ let rfile =
     | Some f -> f
     | None -> Arg.usage spec usage ; exit 1
 
-let print_loc_lb lb =
-  let b, e = lexeme_start_p lb, lexeme_end_p lb in
+let print_loc (b, e) =
   eprintf "File \"%s\", line %d, characters %d-%d:\n" rfile
     b.pos_lnum (b.pos_cnum - b.pos_bol + 1) (e.pos_cnum - b.pos_bol + 1)
-
+    
+let print_loc_lb lb = print_loc (lexeme_start_p lb, lexeme_end_p lb)
 
 (* Fonction principale *)
 let () =
@@ -35,9 +35,15 @@ let () =
     let c = open_in rfile in
     let lb = from_channel c in
     try
-      let _ = file Lexer.next_token lb in
+      let ast = file Lexer.next_token lb in
       close_in c ;
-        exit 0
+      try
+        let ret, _ = interpFile ast [] Mstr.empty in
+        match ret with
+          | Vint i -> printf "%d@." !i
+          | _ -> printf "Pas entier !@."
+      with
+        | Interp.Error (loc, s) -> print_loc loc ; eprintf "%s@." s
     with
       | Lexer.Error s -> print_loc_lb lb ; eprintf "%s@." s
       | Parser.Error -> print_loc_lb lb ; eprintf "syntax error@."

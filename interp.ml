@@ -1,5 +1,7 @@
 
 (* Interpréteur pour Mini C *)
+(* Pour l'instant l'on n'admet pas le changement de programme conservant les
+ * variables statiques, mais ça peut changer... *)
 
 open Ast
 
@@ -206,7 +208,8 @@ let addStaticVar t id statics =
   else
     Mstr.add id.ident (newGlobalVar t) statics
 
-let interpFile retTyp ldecl statics =
+let interpFile ldecl args statics =
+  let dummy_loc = (Lexing.dummy_pos, Lexing.dummy_pos) in
   let rec aux statics vars funs = function    (* Ast.file -> Mstr *)
     | [] -> (statics, vars, funs)
     | Dident (lid, t)::q ->
@@ -217,4 +220,7 @@ let interpFile retTyp ldecl statics =
     | Dfun (id, t, args, body)::q ->
         aux statics vars (Mstr.add id.ident (newFun t args body) funs) q in
   let statics, vars, funs = aux statics Mstr.empty Mstr.empty ldecl in
-  assert false
+  let ret = interpExpr vars funs { expr =
+    Ecall ({ ident = "main"; loc = dummy_loc }, args); loc = dummy_loc } in
+  (ret, statics)
+
