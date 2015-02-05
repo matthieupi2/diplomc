@@ -119,7 +119,17 @@ and interpExpr vars funs e = match e.expr with
           | Unot  -> if i = 0 then 1 else 0
           | Ubnot -> lnot i ))
       | _ -> assert false )
-  | _ -> assert false
+  | Econst c -> match c with
+    | Carray (n, arr) -> let e0 = interpExpr vars funs arr.(0) in
+      let aux = function
+        | 0 -> e0
+        | n -> let e = interpExpr vars funs arr.(n) in
+          if areSameTypes e e0 then
+            e
+          else
+            assert false in
+      Varray (Array.init n aux)
+    | Cint i -> Vint (ref i)
 
 and interpStat vars funs = function
   | Sexpr e -> let _ = interpExpr vars funs e in vars
