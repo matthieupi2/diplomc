@@ -11,7 +11,8 @@
   (* Définition des mots-clefs *)
   let kwd = Hashtbl.create 17
   let () = List.iter (fun (k,t) -> Hashtbl.add kwd k t)
-    ["if", IF ;  "else", ELSE ; "return", RETURN ; "while", WHILE ; "int", INT]
+    [ "if", IF ;  "else", ELSE ; "return", RETURN ; "while", WHILE ;
+      "static", STATIC ; "void", VOID ; "int", INT ]
 
   (* Différencie les identifiants des mots-clefs *)
   let id s =

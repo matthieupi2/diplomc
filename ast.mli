@@ -18,6 +18,7 @@ type unop =
 type typ =
   | Tarray of loc_expr * typ
   | Tint
+  | Tvoid
 
 and constant =
   | Carray of int * loc_expr array
@@ -48,6 +49,7 @@ type stat =
 
 type declaration =
   | Dident of loc_ident list * typ
+  | DstaticIdent of loc_ident list * typ
   | Dfun of loc_ident * typ * (loc_ident * typ) list * stat
 
 type file = declaration list

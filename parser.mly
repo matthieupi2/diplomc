@@ -11,7 +11,7 @@
 
 %token <Ast.ident> IDENT
 %token <Ast.constant> CST
-%token IF ELSE RETURN WHILE INT
+%token IF ELSE RETURN WHILE INT VOID STATIC
 %token LB RB LSB RSB LCB RCB
 %token SEMICOLON COMMA ASSIGN
 %token EQ NEQ LEQ LT GEQ GT
@@ -47,6 +47,8 @@ loc_ident:
   | id=IDENT  { {ident = id; loc = ($startpos, $endpos)} }
 
 decl:
+  | STATIC t=typ lident=separated_nonempty_list(COMMA, loc_ident) SEMICOLON
+    { DstaticIdent (lident, t) }
   | t=typ lident=separated_nonempty_list(COMMA, loc_ident) SEMICOLON
     { Dident (lident, t) }
   | t=typ f=loc_ident LB args=separated_list(COMMA, decl_ident) RB s=stat
@@ -56,7 +58,8 @@ decl_ident:
   | t=typ ident=loc_ident { (ident, t) } ;
 
 typ:
-  | INT t=typ2 { t } ;
+  | INT t=typ2  { t } ;
+  | VOID        { Tvoid }
 
 typ2:
   | LSB e=loc_expr RSB t=typ2 { Tarray (e, t) }
