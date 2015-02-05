@@ -41,11 +41,27 @@ let rec newVar vars funs = function
   | TTint -> Vint (ref 0)
   | _ -> assert false
 
-and interpLeft _ _ _ =
-  assert false
+and interpLeft vars funs = function
+  | Lterm (id, e) -> (
+    try
+      match Mstr.find id.ident vars, interpExpr vars funs e with
+        | Varray arr, Vint i -> (
+          try
+            arr.(!i)
+          with Invalid_argument "index out of bounds" ->
+            assert false )
+        | Varray _, _ -> assert false
+        | _ -> assert false
+    with Not_found ->
+      assert false )
+  | Lident id ->
+    try
+      Mstr.find id.ident vars
+    with Not_found ->
+      assert false
 
 (* TODO ajouter \0 à la fin des chaînes de caractères *)
-(* TODO assuré 32 bit *)
+(* TODO assurer 32 bit *)
 
 and interpExpr vars funs e =
   let interpExpr = interpExpr vars funs in
