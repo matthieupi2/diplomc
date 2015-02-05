@@ -17,6 +17,8 @@ module Mstr = Map.Make(String)
 let add_list f t lid map =
   List.fold_right (fun id map -> Mstr.add id.ident (f t) map) lid map
 
+let int_of_bool b = if b then 1 else 0
+
 (* Interprétation... *)
 
 exception Return of var
@@ -82,6 +84,41 @@ and interpExpr vars funs e = match e.expr with
         | Return v -> v
         | ReturnVoid -> Vvoid
     with Not_found -> assert false )
+  | Ebinop (op, e1, e2) -> ( (* TODO vérification typage malgré paresseux *)
+    match op, interpExpr vars funs e1 with
+      | Band, Vint i1 when !i1 == 0 -> Vint (ref 0)
+      | Bor, Vint i1 when !i1 <> 0 -> Vint (ref 1)
+      | _, Vint i1 -> ( let i1 = !i1 in
+        match interpExpr vars funs e2 with
+          | Vint i2 -> let i2 = !i2 in
+            Vint (ref ( match op with
+              | Bplus       -> i1 + i2
+              | Bminus      -> i1 - i2
+              | Btimes      -> i1 * i2
+              | Bdiv        -> i1 / i2
+              | Bmod        -> i1 mod i2
+              | Band | Bor  -> int_of_bool (i2 <> 0)
+              | Bband       -> i1 land i2
+              | Bbor        -> i1 lor i2
+              | Bbxor       -> i1 lxor i2
+              | BshiftL     -> i1 lsl i2
+              | BshiftR     -> i1 lsr i2
+              | Beq         -> int_of_bool (i1 = i2)
+              | Bneq        -> int_of_bool (i1 <> i2)
+              | Bleq        -> int_of_bool (i1 <= i2)
+              | Blt         -> int_of_bool (i1 < i2)
+              | Bgeq        -> int_of_bool (i1 >= i2)
+              | Bgt         -> int_of_bool (i1 > i2) ))
+          | _ -> assert false )
+      | _ -> assert false )
+  | Eunop (op, e) -> (
+    match interpExpr vars funs e with
+      | Vint i -> let i = !i in
+        Vint (ref (match op with
+          | Uneg  -> -i
+          | Unot  -> if i = 0 then 1 else 0
+          | Ubnot -> lnot i ))
+      | _ -> assert false )
   | _ -> assert false
 
 and interpStat vars funs = function
