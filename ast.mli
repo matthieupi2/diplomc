@@ -1,11 +1,11 @@
 
 (* Arbre de syntaxe abstraite de Mini C *)
 
-open Lexing
+type loc = Lexing.position * Lexing.position
 
 type ident = string
 
-type loc_ident = { ident : ident; loc : position * position }
+type loc_ident = { ident : ident; loc : loc }
 
 type binop =
   | Bplus | Bminus | Btimes | Bdiv | Bmod
@@ -28,7 +28,7 @@ and left =
   | Lterm of loc_ident * loc_expr
   | Lident of loc_ident
 
-and loc_expr = { expr : expr; loc : position * position }
+and loc_expr = { expr : expr; loc : loc }
 
 and expr =
   | Eleft of left

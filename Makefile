@@ -1,4 +1,4 @@
-CMO = parser.cmo lexer.cmo main.cmo
+CMO = interp.cmo parser.cmo lexer.cmo main.cmo
 GENERATED = lexer.ml parser.ml parser.mli
 
 all: jeu

@@ -3,6 +3,7 @@ open Format
 open Lexing
 open Parser
 open Ast
+open Interp
 
 (* Définition des options proposées pour l'exécution *)
 
