@@ -82,7 +82,8 @@ stat:
   | IF LB e=loc_expr RB s=stat                { Sif (e, s) }
   | IF LB e=loc_expr RB s1=stat ELSE s2=stat  { Sifelse (e, s1, s2) }
   | WHILE LB e=loc_expr RB s=stat             { Swhile (e, s) }
-  | t=typ ident=loc_ident SEMICOLON           { Sdecl (ident, t) } ;
+  | t=typ lident=separated_nonempty_list(COMMA, loc_ident) SEMICOLON
+    { Sdecl (lident, t) }
 
 loc_expr:
   | e=expr  { {expr = e; loc = ($startpos, $endpos)} }

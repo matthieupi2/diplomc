@@ -47,7 +47,7 @@ type stat =
   | Sif of loc_expr * stat
   | Sifelse of loc_expr * stat * stat
   | Swhile of loc_expr * stat
-  | Sdecl of loc_ident * typ
+  | Sdecl of loc_ident list * typ
 
 type declaration =
   | Dident of loc_ident list * typ

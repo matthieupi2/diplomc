@@ -13,40 +13,45 @@ type tfun = { typ : typ; args : (loc_ident * typ) list; body : stat }
 
 module Mstr = Map.Make(String)
 
+let add_list f t lid map =
+  List.fold_right (fun id map -> Mstr.add id.ident (f t) map) lid map
+
 (* Interprétation... *)
 
 exception Return of var
 exception ReturnVoid
 
-let rec newVar =
+let rec newVar _ =
   assert false
 
-let rec interpExpr =
+let rec interpExpr _ _ _ =
   assert false
 
-and interpStat vars = function
-  | Sexpr e -> let _ = interpExpr vars e in vars
-  | Sdo ls -> List.fold_right (fun vars s -> interpStat s vars) ls vars ; vars
-  | Sreturn e -> raise (Return (interpExpr vars e))
+and interpStat vars funs = function
+  | Sexpr e -> let _ = interpExpr vars funs e in vars
+  | Sdo ls -> let _ =
+      List.fold_right (fun s vars -> interpStat vars funs s) ls vars in 
+    vars
+  | Sreturn e -> raise (Return (interpExpr vars funs e))
   | SreturnVoid -> raise ReturnVoid
-  | Sif (e, s) -> ( let cdt = interpExpr vars e in
-    match cdt with
+  | Sif (e, s) -> let cdt = interpExpr vars funs e in
+    let _ = match cdt with
       | Vint n -> if !n = 0 then
           ()
         else
-          interpStat vars s
-      | _ -> assert false ) ;
+          ignore (interpStat vars funs s)
+      | _ -> assert false in
     vars
-  | Sifelse (e, s1, s2) -> ( let cdt = interpExpr vars e in
-    match cdt with
+  | Sifelse (e, s1, s2) -> let cdt = interpExpr vars funs e in
+    let _ = match cdt with
       | Vint n -> if !n = 0 then
-          interpStat vars s2
+          interpStat vars funs s2
         else
-          interpStat vars s1
-      | _ -> assert false ) ;
+          interpStat vars funs s1
+      | _ -> assert false in
     vars
-  | Swhile (e, s) as w -> interpStat vars (Sif (e, Sdo [s ; w]))
-  | Sdecl (lid, t) -> assert false (* List.fold_right newVar t lid vars *)
+  | Swhile (e, s) as w -> interpStat vars funs (Sif (e, Sdo [s ; w]))
+  | Sdecl (lid, t) -> add_list newVar t lid vars
 
 (** Lecture du fichier **)
 
@@ -57,34 +62,25 @@ let rec newGlobalVar = function
   | VTarray _ -> assert false
   | _ -> assert false
 
-let addGlobalVar t id vars =
-  if Mstr.mem id.ident vars then
-    assert false ;
-  Mstr.add id.ident (newGlobalVar t) vars
-
-let addFun t id args body funs =
-  if Mstr.mem id.ident funs then
-    assert false ;
+let newFun t args body =
   match t with
     | VTarray _ -> assert false
-    | _ -> Mstr.add id.ident { typ = t; args = args; body = body } funs
+    | _ -> { typ = t; args = args; body = body }
   
 let addStaticVar t id statics =
-  if Mstr.mem id.ident statics then
+  if Mstr.mem id.ident statics then (* TODO compare type *)
     statics
   else
     Mstr.add id.ident (newGlobalVar t) statics
 
-
 let interpFile ldecl statics =
   let rec aux statics vars funs = function    (* Ast.file -> Mstr *)
     | [] -> (statics, vars, funs)
-    | Dident (lid, t)::q ->
-      aux statics (List.fold_right (addGlobalVar t) lid vars) funs q
-    | DstaticIdent (lid, t)::q ->
-      aux (List.fold_right (addStaticVar t) lid statics)
-        (List.fold_right (addGlobalVar t) lid vars) funs q
+    | Dident (lid, t)::q -> aux statics (add_list newVar t lid vars) funs q
+    | DstaticIdent (lid, t)::q -> aux
+        (List.fold_right (addStaticVar t) lid statics)
+        (add_list newVar t lid vars) funs q
     | Dfun (id, t, args, body)::q ->
-        aux statics vars (addFun t id args body funs) q in
-  let statics = aux ldecl in
+        aux statics vars (Mstr.add id.ident (newFun t args body) funs) q in
+  let statics, vars, funs = aux statics Mstr.empty Mstr.empty ldecl in
   assert false
