@@ -78,6 +78,7 @@ stat:
   | e=loc_expr SEMICOLON                      { Sexpr e }
   | LCB ls=stat* RCB                          { Sdo ls }
   | RETURN e=loc_expr SEMICOLON               { Sreturn e }
+  | RETURN SEMICOLON                          { SreturnVoid }
   | IF LB e=loc_expr RB s=stat                { Sif (e, s) }
   | IF LB e=loc_expr RB s1=stat ELSE s2=stat  { Sifelse (e, s1, s2) }
   | WHILE LB e=loc_expr RB s=stat             { Swhile (e, s) }
