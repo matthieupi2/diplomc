@@ -21,6 +21,34 @@ let add_list f t lid map =
 
 let int_of_bool b = if b then 1 else 0
 
+(* Gestion des erreurs *)
+
+let rec string_of_type = function
+  | VTarray _ -> failwith "remaining VTarray"
+  | FTarray t -> string_of_type t ^ "[]"
+  | TTint -> "int"
+  | FTvoid -> "void"
+
+let rec type_of_var = function
+  | Vint _ -> TTint
+  | Varray arr -> FTarray (type_of_var arr.(0))
+  | Vvoid -> FTvoid
+
+let type_error loc a typ =
+  let s1 = string_of_type (type_of_var a) in
+  let s2 = string_of_type typ in
+  raise (Error (loc, "type error : is of type " ^ s1 ^
+    "\nbut should be of type " ^ s2))
+
+let diff_types_error loc a b =
+  let s1 = string_of_type (type_of_var a) in
+  let s2 = string_of_type (type_of_var b) in
+  raise (Error (loc, "type error : is of type " ^ s1 ^
+    "\nbut should be of type " ^ s2))
+
+let unbound_error id =
+  raise (Error (id.iloc, "error: unbound value " ^ id.ident))
+
 (* Interprétation... *)
 
 exception Return of var
@@ -39,7 +67,9 @@ let rec isOfType typ a = match a, typ with
 let rec newVar vars funs = function
   | VTarray (e, t) -> ( match interpExpr vars funs e with
     | Vint i when !i > 0 -> Varray (Array.init !i (fun _ -> newVar vars funs t))
-    | _ -> assert false )
+    | Vint _ -> raise (Error (e.eloc, "error: size of array should be a" ^
+        "positive integer"))
+    | _ as a -> type_error e.eloc a TTint )
   | TTint -> Vint (ref 0)
   | _ -> assert false
 
@@ -47,20 +77,23 @@ and interpLeft vars funs = function
   | Lterm (id, e) -> (
     try
       match Mstr.find id.ident vars, interpExpr vars funs e with
-        | Varray arr, Vint i -> (
+        | Varray arr, Vint i-> (
           try
             arr.(!i)
-          with Invalid_argument "index out of bounds" ->
-            assert false )
-        | Varray _, _ -> assert false
-        | _ -> assert false
-    with Not_found ->
-      assert false )
+          with Invalid_argument "index out of bounds" -> 
+            raise (Error (e.eloc, "error: index out of bounds: " ^ id.ident ^
+              "'s length is " ^ string_of_int (Array.length arr))) )
+        | Varray _, (_ as a) -> type_error e.eloc a TTint
+        | _ -> raise (Error (id.iloc, "type error: " ^ id.ident ^
+            " should be an array"))
+    with
+      | Not_found -> unbound_error id
+       )
   | Lident id ->
     try
       Mstr.find id.ident vars
-    with Not_found ->
-      assert false
+    with
+      | Not_found -> unbound_error id
 
 (* TODO ajouter \0 à la fin des chaînes de caractères *)
 (* TODO assurer 32 bit *)
@@ -79,9 +112,9 @@ and interpExpr vars funs e =
               arrl.(i) <- arr.(i)
             done ;
             l
-          | _ -> assert false
+          | _ -> failwith "areSameTypes failed"
       else
-        assert false
+        assert false (* diff_types_error l.lloc l v *)
     | Ecall (id, args) -> (
       try
         let f = Mstr.find id.ident funs in
@@ -92,18 +125,20 @@ and interpExpr vars funs e =
             if isOfType (snd formal) v then
               add_args (Mstr.add (fst formal).ident v vars) qf qa
             else
-              assert false
-          | _ -> assert false in
+              type_error arg.eloc v (snd formal)
+          | _ -> raise (Error (id.iloc, "error: number of arguments does not " ^
+            "match definition")) in
         try
           ignore (interpStat f.typ (add_args vars f.args args) funs f.body) ;
           if f.typ = FTvoid then
             raise ReturnVoid
           else
-            assert false
+            raise (Error (id.iloc, "type error: function " ^ id.ident ^
+              " should return something"))
         with
           | Return v -> v
           | ReturnVoid -> Vvoid
-      with Not_found -> assert false )
+      with Not_found -> unbound_error id )
     | Ebinop (op, e1, e2) -> ( (* TODO vérification typage malgré paresseux *)
       match op, interpExpr e1 with
         | Band, Vint i1 when !i1 == 0 -> Vint (ref 0)
@@ -129,8 +164,8 @@ and interpExpr vars funs e =
                 | Blt         -> int_of_bool (i1 < i2)
                 | Bgeq        -> int_of_bool (i1 >= i2)
                 | Bgt         -> int_of_bool (i1 > i2) ))
-            | _ -> assert false )
-        | _ -> assert false )
+            | _ as a -> type_error e2.eloc a TTint )
+        | _,(_ as a) -> type_error e1.eloc a TTint )
     | Eunop (op, e) -> (
       match interpExpr e with
         | Vint i -> let i = !i in
@@ -138,16 +173,16 @@ and interpExpr vars funs e =
             | Uneg  -> -i
             | Unot  -> if i = 0 then 1 else 0
             | Ubnot -> lnot i ))
-        | _ -> assert false )
+        | _ as a -> type_error e.eloc a TTint )
     | Econst c -> match c with
-      | Carray (n, arr) -> let e0 = interpExpr arr.(0) in
+      | Carray (n, arr) -> let v0 = interpExpr arr.(0) in
         let aux = function
-          | 0 -> e0
-          | n -> let e = interpExpr arr.(n) in
-            if areSameTypes e e0 then
-              e
+          | 0 -> v0
+          | n -> let v = interpExpr arr.(n) in
+            if areSameTypes v v0 then
+              v
             else
-              assert false in
+              diff_types_error e.eloc v v0 in
         Varray (Array.init n aux)
       | Cint i -> Vint (ref i)
 
@@ -163,19 +198,20 @@ and interpStat retTyp vars funs s =
       if isOfType retTyp v then
         raise (Return v)
       else
-        assert false
+        type_error e.eloc v retTyp
     | SreturnVoid ->
       if retTyp = FTvoid then
         raise ReturnVoid
-      else
-        assert false
+      else 
+        assert false (* raise (Error (loc, "type error : this function should return " ^
+          "something of type " ^ string_of_type retTyp)) *)
     | Sif (e, s) -> let cdt = interpExpr e in
       let _ = match cdt with
         | Vint n -> if !n = 0 then
             ()
           else
             ignore (interpStat vars s)
-        | _ -> assert false in
+        | _ -> type_error e.eloc cdt TTint in
       vars
     | Sifelse (e, s1, s2) -> let cdt = interpExpr e in
       let _ = match cdt with
@@ -183,7 +219,7 @@ and interpStat retTyp vars funs s =
             interpStat vars s2
           else
             interpStat vars s1
-        | _ -> assert false in
+        | _ -> type_error e.eloc cdt TTint in
       vars
     | Swhile (e, s) as w -> interpStat vars (Sif (e, Sdo [s ; w]))
     | Sdecl (lid, t) -> add_list (newVar vars funs) t lid vars
@@ -221,6 +257,6 @@ let interpFile ldecl args statics =
         aux statics vars (Mstr.add id.ident (newFun t args body) funs) q in
   let statics, vars, funs = aux statics Mstr.empty Mstr.empty ldecl in
   let ret = interpExpr vars funs { expr =
-    Ecall ({ ident = "main"; loc = dummy_loc }, args); loc = dummy_loc } in
+    Ecall ({ ident = "main"; iloc = dummy_loc }, args); eloc = dummy_loc } in
   (ret, statics)
 

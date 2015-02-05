@@ -5,7 +5,7 @@ type loc = Lexing.position * Lexing.position
 
 type ident = string
 
-type loc_ident = { ident : ident; loc : loc }
+type loc_ident = { ident : ident; iloc : loc }
 
 type binop =
   | Bplus | Bminus | Btimes | Bdiv | Bmod
@@ -29,7 +29,7 @@ and left =
   | Lterm of loc_ident * loc_expr
   | Lident of loc_ident
 
-and loc_expr = { expr : expr; loc : loc }
+and loc_expr = { expr : expr; eloc : loc }
 
 and expr =
   | Eleft of left

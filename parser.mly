@@ -44,7 +44,7 @@ file:
   | ldecl=decl* EOF { ldecl } ;
 
 loc_ident:
-  | id=IDENT  { {ident = id; loc = ($startpos, $endpos)} }
+  | id=IDENT  { {ident = id; iloc = ($startpos, $endpos)} }
 
 decl:
   | STATIC t=typ lident=separated_nonempty_list(COMMA, loc_ident) SEMICOLON
@@ -86,7 +86,7 @@ stat:
     { Sdecl (lident, t) }
 
 loc_expr:
-  | e=expr  { {expr = e; loc = ($startpos, $endpos)} }
+  | e=expr  { {expr = e; eloc = ($startpos, $endpos)} }
 
 expr:
   | l=left                              { Eleft l }
