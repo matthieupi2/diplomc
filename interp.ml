@@ -5,15 +5,19 @@ open Ast
 
 exception Error of loc * string
 
+type var_typ =
+  | Tarray of int * var_typ
+  | Tint
+
 type var =
   | Vint of int ref
-  | Varray of var array
+  | Varray of tvar array (* TODO très lourd *)
+
+and tvar = { typ : var_typ; var : var }
+
+type tfun = { ftyp : typ; args : (loc_ident * typ) list; body : stat }
 
 module Mvar = Map.Make(String)
-
-type tvar = { typ : typ; var : var }
-
-type tfun = { typ : typ; args : (loc_ident * typ) list; body : stat }
 
 let funs = Hashtbl.create 13
 let vars = Hashtbl.create 53
@@ -21,11 +25,12 @@ let vars = Hashtbl.create 53
 (** Lecture du fichier **)
 
 let rec newGlobalVar = function
-  | Tarray ({ expr = Econst (Cint n) }, t) ->
-      Varray (Array.init n (fun _ -> newGlobalVar t))
-  | Tint -> Vint (ref 0)
-  | Tarray _ -> assert false
-  | Tvoid -> assert false
+  | VTarray ({ expr = Econst (Cint n) }, t) when n > 0 ->
+      let arr = Array.init n (fun _ -> newGlobalVar t) in
+      { typ = Tarray (n, arr.(0).typ); var = Varray arr }
+  | TTint -> { typ = Tint; var = Vint (ref 0) }
+  | VTarray _ -> assert false
+  | _ -> assert false
 
 let addGlobalVar t id =
   if Hashtbl.mem vars id.ident then
@@ -35,7 +40,9 @@ let addGlobalVar t id =
 let addFun t id args body =
   if Hashtbl.mem funs id.ident then
     assert false ;
-  Hashtbl.add funs id.ident { typ = t; args = args; body = body }
+  match t with
+    | VTarray _ -> assert false
+    | _ -> Hashtbl.add funs id.ident { ftyp = t; args = args; body = body }
   
 let addStaticVar t id statics =
   if Mvar.mem id.ident statics then

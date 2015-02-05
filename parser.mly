@@ -58,12 +58,21 @@ decl_ident:
   | t=typ ident=loc_ident { (ident, t) } ;
 
 typ:
-  | INT t=typ2  { t } ;
-  | VOID        { Tvoid }
+  | INT t=typ_int { t } ;
+  | VOID          { FTvoid } ;
 
-typ2:
-  | LSB e=loc_expr RSB t=typ2 { Tarray (e, t) }
-  |                           { Tint } ;
+typ_int:
+  | LSB e=loc_expr RSB t=var_typ  { VTarray (e, t) }
+  | LSB RSB t=fun_typ             { FTarray t }
+  |                               { TTint } ;
+
+var_typ:
+  | LSB e=loc_expr RSB t=var_typ  { VTarray (e, t) }
+  |                               { TTint } ;
+
+fun_typ:
+  | LSB RSB t=fun_typ { FTarray t }
+  |                   { TTint } ;
 
 stat:
   | e=loc_expr SEMICOLON                      { Sexpr e }

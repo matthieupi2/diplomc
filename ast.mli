@@ -16,9 +16,10 @@ type unop =
   | Uneg | Unot | Ubnot
 
 type typ =
-  | Tarray of loc_expr * typ
-  | Tint
-  | Tvoid
+  | VTarray of loc_expr * typ
+  | FTarray of typ
+  | TTint
+  | FTvoid
 
 and constant =
   | Carray of int * loc_expr array
