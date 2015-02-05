@@ -244,20 +244,20 @@ let newFun t args body =
     | VTarray _ -> failwith "there is a function of type VTarray"
     | _ -> { typ = t; args = args; body = body }
   
-let addStaticVar t id statics =
-  if Mstr.mem id.ident statics then (* TODO compare type *)
-    statics
-  else
-    Mstr.add id.ident (newGlobalVar t) statics
+let addStaticVar t id (statics, vars) =
+  try (* TODO compare type *)
+    (statics, Mstr.add id.ident (Mstr.find id.ident statics) vars)
+  with Not_found -> let v = newGlobalVar id.iloc t in
+    (Mstr.add id.ident v statics, Mstr.add id.ident v vars)
 
 let interpFile ldecl args statics =
   let rec aux statics vars funs = function    (* Ast.file -> Mstr *)
     | [] -> (statics, vars, funs)
     | Dident (lid, t)::q ->
         aux statics (add_list newGlobalVar t lid vars) funs q
-    | DstaticIdent (lid, t)::q -> assert false
-     (* TODO aux (List.fold_right (addStaticVar t) lid statics)
-        (add_list newGlobalVar t lid vars) funs q *)
+    | DstaticIdent (lid, t)::q ->
+     let statics, vars = List.fold_right (addStaticVar t) lid (statics, vars) in
+      aux statics vars funs q
     | Dfun (id, t, args, body)::q ->
         aux statics vars (Mstr.add id.ident (newFun t args body) funs) q in
   let statics, vars, funs = aux statics Mstr.empty Mstr.empty ldecl in
