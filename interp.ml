@@ -21,10 +21,14 @@ let add_list f t lid map =
 exception Return of var
 exception ReturnVoid
 
-let rec newVar _ =
-  assert false
+let rec newVar vars funs = function
+  | VTarray (e, t) -> ( match interpExpr vars funs e with
+    | Vint i when !i > 0 -> Varray (Array.init !i (fun _ -> newVar vars funs t))
+    | _ -> assert false )
+  | TTint -> Vint (ref 0)
+  | _ -> assert false
 
-let rec interpExpr _ _ _ =
+and interpExpr _ _ _ =
   assert false
 
 and interpStat vars funs = function
@@ -51,7 +55,7 @@ and interpStat vars funs = function
       | _ -> assert false in
     vars
   | Swhile (e, s) as w -> interpStat vars funs (Sif (e, Sdo [s ; w]))
-  | Sdecl (lid, t) -> add_list newVar t lid vars
+  | Sdecl (lid, t) -> add_list (newVar vars funs) t lid vars
 
 (** Lecture du fichier **)
 
@@ -76,10 +80,11 @@ let addStaticVar t id statics =
 let interpFile ldecl statics =
   let rec aux statics vars funs = function    (* Ast.file -> Mstr *)
     | [] -> (statics, vars, funs)
-    | Dident (lid, t)::q -> aux statics (add_list newVar t lid vars) funs q
-    | DstaticIdent (lid, t)::q -> aux
-        (List.fold_right (addStaticVar t) lid statics)
-        (add_list newVar t lid vars) funs q
+    | Dident (lid, t)::q ->
+        aux statics (add_list newGlobalVar t lid vars) funs q
+    | DstaticIdent (lid, t)::q ->
+      aux (List.fold_right (addStaticVar t) lid statics)
+        (add_list newGlobalVar t lid vars) funs q
     | Dfun (id, t, args, body)::q ->
         aux statics vars (Mstr.add id.ident (newFun t args body) funs) q in
   let statics, vars, funs = aux statics Mstr.empty Mstr.empty ldecl in
