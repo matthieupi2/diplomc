@@ -75,13 +75,13 @@ fun_typ:
   |                   { TTint } ;
 
 stat:
-  | e=loc_expr SEMICOLON                      { Sexpr e }
-  | LCB ls=stat* RCB                          { Sdo ls }
-  | RETURN e=loc_expr SEMICOLON               { Sreturn e }
-  | RETURN SEMICOLON                          { SreturnVoid }
-  | IF LB e=loc_expr RB s=stat                { Sif (e, s) }
+  | e=loc_expr SEMICOLON                    { Sexpr e }
+  | LCB ls=stat* RCB                        { Sdo ls }
+  | RETURN e=loc_expr SEMICOLON             { Sreturn e }
+  | RETURN SEMICOLON                        { SreturnVoid ($startpos, $endpos) }
+  | IF LB e=loc_expr RB s=stat              { Sif (e, s) }
   | IF LB e=loc_expr RB s1=stat ELSE s2=stat  { Sifelse (e, s1, s2) }
-  | WHILE LB e=loc_expr RB s=stat             { Swhile (e, s) }
+  | WHILE LB e=loc_expr RB s=stat           { Swhile (e, s) }
   | t=typ lident=separated_nonempty_list(COMMA, loc_ident) SEMICOLON
     { Sdecl (lident, t) }
 

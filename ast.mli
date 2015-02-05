@@ -43,7 +43,7 @@ type stat =
   | Sexpr of loc_expr
   | Sdo of stat list
   | Sreturn of loc_expr
-  | SreturnVoid
+  | SreturnVoid of loc
   | Sif of loc_expr * stat
   | Sifelse of loc_expr * stat * stat
   | Swhile of loc_expr * stat

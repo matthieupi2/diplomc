@@ -17,9 +17,11 @@ type tfun = { typ : typ; args : (loc_ident * typ) list; body : stat }
 module Mstr = Map.Make(String)
 
 let add_list f t lid map =
-  List.fold_right (fun id map -> Mstr.add id.ident (f t) map) lid map
+  List.fold_right (fun id map -> Mstr.add id.ident (f id.iloc t) map) lid map
 
 let int_of_bool b = if b then 1 else 0
+
+let dummy_loc = (Lexing.dummy_pos, Lexing.dummy_pos)
 
 (* Gestion des erreurs *)
 
@@ -64,14 +66,16 @@ let rec isOfType typ a = match a, typ with
   | Varray a, FTarray typ -> isOfType typ a.(0)
   | _ -> false
 
-let rec newVar vars funs = function
+let rec newVar vars funs loc = function
   | VTarray (e, t) -> ( match interpExpr vars funs e with
-    | Vint i when !i > 0 -> Varray (Array.init !i (fun _ -> newVar vars funs t))
+    | Vint i when !i > 0 ->
+      Varray (Array.init !i (fun _ -> newVar vars funs dummy_loc t))
     | Vint _ -> raise (Error (e.eloc, "error: size of array should be a" ^
         "positive integer"))
     | _ as a -> type_error e.eloc a TTint )
   | TTint -> Vint (ref 0)
-  | _ -> assert false
+  | _ as t -> raise (Error (loc, "type error: type " ^ string_of_type t ^
+      " cannot be the type of a variable"))
 
 and interpLeft vars funs = function
   | Lterm (id, e) -> (
@@ -114,7 +118,7 @@ and interpExpr vars funs e =
             l
           | _ -> failwith "areSameTypes failed"
       else
-        assert false (* diff_types_error l.lloc l v *)
+        diff_types_error e.eloc v l
     | Ecall (id, args) -> (
       try
         let f = Mstr.find id.ident funs in
@@ -199,12 +203,12 @@ and interpStat retTyp vars funs s =
         raise (Return v)
       else
         type_error e.eloc v retTyp
-    | SreturnVoid ->
+    | SreturnVoid loc ->
       if retTyp = FTvoid then
         raise ReturnVoid
       else 
-        assert false (* raise (Error (loc, "type error : this function should return " ^
-          "something of type " ^ string_of_type retTyp)) *)
+        raise (Error (loc, "type error : this function should return " ^
+          "something of type " ^ string_of_type retTyp))
     | Sif (e, s) -> let cdt = interpExpr e in
       let _ = match cdt with
         | Vint n -> if !n = 0 then
@@ -226,16 +230,18 @@ and interpStat retTyp vars funs s =
 
 (** Lecture du fichier **)
 
-let rec newGlobalVar = function
+let rec newGlobalVar loc = function
   | VTarray ({ expr = Econst (Cint n) }, t) when n > 0 ->
-      Varray (Array.init n (fun _ -> newGlobalVar t))
+      Varray (Array.init n (fun _ -> newGlobalVar loc t))
   | TTint -> Vint (ref 0)
-  | VTarray _ -> assert false
-  | _ -> assert false
+  | VTarray _ -> raise (Error (loc, "error: global array size should be " ^
+      "a positive constant integer"))
+  | _ as t -> raise (Error (loc, "type error: type " ^ string_of_type t ^
+      " cannot be the type of a variable"))
 
 let newFun t args body =
   match t with
-    | VTarray _ -> assert false
+    | VTarray _ -> failwith "there is a function of type VTarray"
     | _ -> { typ = t; args = args; body = body }
   
 let addStaticVar t id statics =
@@ -245,14 +251,13 @@ let addStaticVar t id statics =
     Mstr.add id.ident (newGlobalVar t) statics
 
 let interpFile ldecl args statics =
-  let dummy_loc = (Lexing.dummy_pos, Lexing.dummy_pos) in
   let rec aux statics vars funs = function    (* Ast.file -> Mstr *)
     | [] -> (statics, vars, funs)
     | Dident (lid, t)::q ->
         aux statics (add_list newGlobalVar t lid vars) funs q
-    | DstaticIdent (lid, t)::q ->
-      aux (List.fold_right (addStaticVar t) lid statics)
-        (add_list newGlobalVar t lid vars) funs q
+    | DstaticIdent (lid, t)::q -> assert false
+     (* TODO aux (List.fold_right (addStaticVar t) lid statics)
+        (add_list newGlobalVar t lid vars) funs q *)
     | Dfun (id, t, args, body)::q ->
         aux statics vars (Mstr.add id.ident (newFun t args body) funs) q in
   let statics, vars, funs = aux statics Mstr.empty Mstr.empty ldecl in
