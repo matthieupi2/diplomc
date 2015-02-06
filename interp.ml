@@ -10,14 +10,14 @@ exception Error of loc * string
 type var =
   | Vint of int ref
   | Varray of var array
-  | Vvoid                   (* TODO ... *)
+  | Vvoid
 
 type tfun = { typ : typ; args : (loc_ident * typ) list; body : stat }
 
 module Mstr = Map.Make(String)
 
 let add_list f t lid map =
-  List.fold_right (fun id map -> Mstr.add id.ident (f id.iloc t) map) lid map
+  List.fold_left (fun map id -> Mstr.add id.ident (f id.iloc t) map) map lid
 
 let int_of_bool b = if b then 1 else 0
 
@@ -99,7 +99,6 @@ and interpLeft vars funs = function
     with
       | Not_found -> unbound_error id
 
-(* TODO ajouter \0 à la fin des chaînes de caractères *)
 (* TODO assurer 32 bit *)
 
 and interpExpr vars funs e =
@@ -108,15 +107,16 @@ and interpExpr vars funs e =
     | Eleft l -> interpLeft vars funs l
     | Eassign (l, e) -> let l = interpLeft vars funs l in
       let v = interpExpr e in
-      if areSameTypes l v then
-        match l, v with
-          | Vint refl, Vint v -> refl := !v ; l
+      if areSameTypes l v then (
+        let rec aux l v = match l, v with
+          | Vint refl, Vint v -> refl := !v
           | Varray arrl, Varray arr ->
             for i = 0 to min (Array.length arrl) (Array.length arr) - 1 do
-              arrl.(i) <- arr.(i)
-            done ;
-            l
-          | _ -> failwith "areSameTypes failed"
+              aux arrl.(i) arr.(i)
+            done
+          | _ -> failwith "areSameTypes failed" in
+        aux l v ;
+        l )
       else
         diff_types_error e.eloc v l
     | Ecall (id, args) -> (
@@ -196,7 +196,7 @@ and interpStat retTyp vars funs s =
   match s with
     | Sexpr e -> let _ = interpExpr e in vars
     | Sdo ls -> let _ =
-        List.fold_right (fun s vars -> interpStat vars s) ls vars in 
+        List.fold_left (fun vars s -> interpStat vars s) vars ls in 
       vars
     | Sreturn e -> let v = interpExpr e in
       if isOfType retTyp v then
@@ -244,7 +244,7 @@ let newFun t args body =
     | VTarray _ -> failwith "there is a function of type VTarray"
     | _ -> { typ = t; args = args; body = body }
   
-let addStaticVar t id (statics, vars) =
+let addStaticVar t (statics, vars) id =
   try (* TODO compare type *)
     (statics, Mstr.add id.ident (Mstr.find id.ident statics) vars)
   with Not_found -> let v = newGlobalVar id.iloc t in
@@ -256,7 +256,7 @@ let interpFile ldecl args statics =
     | Dident (lid, t)::q ->
         aux statics (add_list newGlobalVar t lid vars) funs q
     | DstaticIdent (lid, t)::q ->
-     let statics, vars = List.fold_right (addStaticVar t) lid (statics, vars) in
+     let statics, vars = List.fold_left (addStaticVar t) (statics, vars) lid in
       aux statics vars funs q
     | Dfun (id, t, args, body)::q ->
         aux statics vars (Mstr.add id.ident (newFun t args body) funs) q in

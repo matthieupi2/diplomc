@@ -111,7 +111,8 @@ and multicomment = parse
   | _     { multicomment lexbuf }
 
 and lstring = parse
-  | '"'             { [] }
+  | '"'             { [{ expr = Econst (Cint 0);
+    eloc = (dummy_pos, dummy_pos) }] }
   | character as s  { { expr = Econst (Cint (int_of_character s));
     eloc = (dummy_pos, dummy_pos) }::lstring lexbuf }
   | eof             { raise (Error "unterminated string") }
