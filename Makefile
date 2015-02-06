@@ -1,10 +1,14 @@
-CMO = interp.cmo parser.cmo lexer.cmo main.cmo
+JEUCMO = interp.cmo parser.cmo lexer.cmo jeu.cmo
+MINICCMO = interp.cmo parser.cmo lexer.cmo minic.cmo
 GENERATED = lexer.ml parser.ml parser.mli
 
-all: jeu
+all: jeu minic
 
-jeu: $(CMO)
-	ocamlc -o $@ $(CMO)
+jeu: $(JEUCMO)
+	ocamlc -o $@ $(JEUCMO)
+
+minic: $(MINICCMO)
+	ocamlc -o $@ $(MINICCMO)
 
 .SUFFIXES: .mli .ml .cmi .cmo
 
@@ -23,7 +27,7 @@ parser.mli: parser.mly ast.cmi
 	menhir --infer parser.mly
 
 clean:
-	rm -f *.cm[io] *~ .depend jeu $(GENERATED)
+	rm -f *.cm[io] *~ .depend jeu minic $(GENERATED)
 
 .depend: $(GENERATED)
 	ocamldep *.ml *.mli > .depend
