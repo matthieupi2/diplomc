@@ -3,6 +3,7 @@
 *.o
 *.annot
 jeu
+minic
 lexer.ml
 parser.ml
 parser.mli
