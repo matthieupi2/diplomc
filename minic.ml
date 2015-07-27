@@ -16,7 +16,7 @@ let rfile =
   let file = ref None in
   let set_file s = 
     if not (Filename.check_suffix s ".mc") then
-      raise (Arg.Bad "no .hs extension") ;
+      raise (Arg.Bad "no .mc extension") ;
     file := Some s in
   Arg.parse spec set_file usage ;
   match !file with
